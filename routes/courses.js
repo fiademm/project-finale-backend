@@ -26,7 +26,6 @@ router.get('/:id', async (req, res) => {
       const result = await pool.query('SELECT * FROM courses WHERE id = $1', [courseId]);
       const course = result.rows[0];
       const result2 = await pool.query('SELECT enrolled_courses FROM users WHERE id = $1', [userId]);
-      console.log('This is the user id ' + userId);
       const enrolledCourses = result2.rows[0]?.enrolled_courses ?? [];
       //const enrolledCourses = result2.rows[0].enrolled_courses || [];
       if (!enrolledCourses.includes(courseId)) {
@@ -66,7 +65,9 @@ router.get('/:id', async (req, res) => {
 router.post('/:id/progress', async (req, res) => {
     try {
         const courseId = parseInt(req.params.id);
-        const { userId } = jwt.verify(req.headers.authorization, process.env.JWT_SECRET);
+        const token = req.headers.authorization.split(' ')[1];
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decodedToken.userId;
         const { progress } = req.body;
         await pool.query('INSERT INTO course_progress (user_id, course_id, progress VALUES ($1, $2, $3) ON CONFLICT (user_id, course_id) DO UPDATE SET progress = EXCLUDED.progress', [userId, courseId, progress]);
         res.send('Progress updated successfully');
