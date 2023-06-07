@@ -101,11 +101,11 @@ router.post('/login', async (req, res) => {
         return res.status(401).send('Missing or invalid Authorization header');
       }
       const token = authHeader.split(' ')[1];
-      console.log('This is the token ' + token);
+      // console.log('This is the token ' + token);
       const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('This is the decoded token ' + JSON.stringify(decodedToken));
+      // console.log('This is the decoded token ' + JSON.stringify(decodedToken));
       const userId = decodedToken.userId;
-      console.log('This is the user id ' + userId);
+      // console.log('This is the user id ' + userId);
       // const decodedToken = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
       // console.log('This is the decoded token ' + decodedToken);
       // const userId = decodedToken.sub || null;
@@ -115,9 +115,9 @@ router.post('/login', async (req, res) => {
         return res.status(400).send('You have already enrolled in this course');
       }
       const newEnrolledCourses = [...enrolledCourses, courseId];
-      console.log('This is the course id ' + courseId);
-      console.log('These are the enrolled courses ' + newEnrolledCourses);
-      console.log('These is the user id ' + userId);
+      // console.log('This is the course id ' + courseId);
+      // console.log('These are the enrolled courses ' + newEnrolledCourses);
+      // console.log('These is the user id ' + userId);
       await pool.query('UPDATE users SET enrolled_courses = $1 WHERE id = $2', [newEnrolledCourses, userId]);
       res.send('Enrolled successfully');
     } catch (error) {
