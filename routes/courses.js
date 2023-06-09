@@ -69,7 +69,7 @@ router.post('/:id/progress', async (req, res) => {
         const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
         const userId = decodedToken.userId;
         const { progress } = req.body;
-        await pool.query('INSERT INTO course_progress (user_id, course_id, progress VALUES ($1, $2, $3) ON CONFLICT (user_id, course_id) DO UPDATE SET progress = EXCLUDED.progress', [userId, courseId, progress]);
+        await pool.query('INSERT INTO course_progress (user_id, course_id, progress) VALUES ($1, $2, $3) ON CONFLICT (user_id, course_id) DO UPDATE SET progress = EXCLUDED.progress', [userId, courseId, progress]);
         res.send('Progress updated successfully');
     } catch(error) {
         console.error(error);
