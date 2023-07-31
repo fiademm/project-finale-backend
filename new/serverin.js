@@ -4,7 +4,6 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const pg = require('pg');
-const { StreamChat } = require('stream-chat');
 
 const app = express();
 var corsOptions = {
@@ -16,6 +15,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 const jwtSecret = '1087C7B5162307CE7C5AE4B2C5D207166D424842C0571E00FFCEDED5C065EBFA';
+
 
 // Middleware for authenticating requests with JWT
 const authenticateJWT = (req, res, next) => {
@@ -52,52 +52,10 @@ const authorizeRole = (role) => {
 const pool = new pg.Pool({
     user: 'postgres',
     host: 'localhost',
-    database: 'project_finale_revamp',
-    password: 'postgres',
+    database: 'mydatabase',
+    password: 'mypassword',
     port: 5432,
 });
-
-const apiKey = 'cm5fsf6rc8xz';
-const apiSecret = 'nthhsgnt4bv5nf4ckewvkfe5beqrpjvcqtxy4gy4dqgnq3jy6n9perz36rd9wfn7';
-
-// Get all messages between two users
-app.get('/messages/:user1/:user2', async (req, res) => {
-    const user1 = req.params.user1;
-    const user2 = req.params.user2;
-    try {
-      const result = await pool.query(
-        `SELECT * FROM messages
-         WHERE (sender_id = $1 AND receiver_id = $2)
-         OR (sender_id = $2 AND receiver_id = $1)
-         ORDER BY timestamp ASC`,
-        [user1, user2]
-      );
-      res.json(result.rows);
-    } catch (err) {
-      console.error(err);
-      res.sendStatus(500);
-    }
-  });
-
-  // Create a new message
-app.post('/messages', async (req, res) => {
-    const { sender_id, receiver_id, message } = req.body;
-    try {
-      const result = await pool.query(
-        `INSERT INTO messages (sender_id, receiver_id, message)
-         VALUES ($1, $2, $3)
-         RETURNING *`,
-        [sender_id, receiver_id, message]
-      );
-      res.json(result.rows[0]);
-    } catch (err) {
-      console.error(err);
-      res.sendStatus(500);
-    }
-  });
-  
-  
-
 
 // Endpoint for getting all courses
 app.get('/courses', authenticateJWT, (req, res) => {
@@ -287,48 +245,6 @@ app.post('/signup/learner', (req, res) => {
     });
 });
 
-// Endpoint for instructor signup
-app.post('/signup/instructor', (req, res) => {
-    const { name, emailAddress, password } = req.body;
-
-    bcrypt.hash(password, 10, (err, hash) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Error creating account');
-        } else {
-            pool.query('INSERT INTO instructor (name, emailAddress, password) VALUES ($1, $2, $3)', [name, emailAddress, hash], (error, results) => {
-                if (error) {
-                    console.error(error);
-                    res.status(500).send('Error creating account');
-                } else {
-                    res.status(201).send('Account created successfully');
-                }
-            });
-        }
-    });
-});
-
-// Endpoint for admin signup
-app.post('/signup/admin', (req, res) => {
-    const { name, emailAddress, password } = req.body;
-
-    bcrypt.hash(password, 10, (err, hash) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Error creating account');
-        } else {
-            pool.query('INSERT INTO admin (name, emailAddress, password) VALUES ($1, $2, $3)', [name, emailAddress, hash], (error, results) => {
-                if (error) {
-                    console.error(error);
-                    res.status(500).send('Error creating account');
-                } else {
-                    res.status(201).send('Account created successfully');
-                }
-            });
-        }
-    });
-});
-
 // Endpoint for signing out
 app.post('/signout', (req, res) => {
     res.sendStatus(200);
@@ -399,24 +315,6 @@ app.get('/instructors/:id', authenticateJWT, authorizeRole(['admin', 'instructor
         } else if (results.rowCount === 0) {
             res.status(404).send('Instructor not found');
         } else if (req.user.role === 'instructor' && req.user.id !== instructorId) {
-            res.sendStatus(403);
-        } else {
-            res.status(200).json(results.rows[0]);
-        }
-    });
-});
-
-// Endpoint for fetching details of an admin by id
-app.get('/admins/:id', authenticateJWT, authorizeRole('admin'), (req, res) => {
-    const adminId = req.params.id;
-
-    pool.query('SELECT * FROM instructor WHERE id = $1', [adminId], (error, results) => {
-        if (error) {
-            console.error(error);
-            res.status(500).send('Error retrieving admin');
-        } else if (results.rowCount === 0) {
-            res.status(404).send('Admin not found');
-        } else if (req.user.role === 'admin' && req.user.id !== adminId) {
             res.sendStatus(403);
         } else {
             res.status(200).json(results.rows[0]);
@@ -532,99 +430,7 @@ app.delete('/admins/:id', authenticateJWT, authorizeRole('admin'), (req, res) =>
     });
 });
 
-// Endpoint for adding a new badge
-app.post('/badges', authenticateJWT, authorizeRole('admin'), (req, res) => {
-    const { name, description, image } = req.body;
-  
-    pool.query('INSERT INTO badge (name, description, image) VALUES ($1, $2, $3)', [name, description, image], (error, results) => {
-      if (error) {
-        console.error(error);
-        res.status(500).send('Error creating badge');
-      } else {
-        res.status(201).send('Badge created successfully');
-      }
-    });
-  });
-  
-  // Endpoint for fetching details of all badges
-  app.get('/badges', authenticateJWT, authorizeRole(['admin', 'learner', 'instructor']), (req, res) => {
-    pool.query('SELECT * FROM badge', [], (error, results) => {
-      if (error) {
-        console.error(error);
-        res.status(500).send('Error retrieving badges');
-      } else {
-        res.status(200).json(results.rows);
-      }
-    });
-  });
-  
-  // Endpoint for fetching details of a badge by id
-  app.get('/badges/:id', authenticateJWT, authorizeRole(['admin', 'learner', 'instructor']), (req, res) => {
-    const badgeId = req.params.id;
-  
-    pool.query('SELECT * FROM badge WHERE id = $1', [badgeId], (error, results) => {
-      if (error) {
-        console.error(error);
-        res.status(500).send('Error retrieving badge');
-      } else if (results.rowCount === 0) {
-        res.status(404).send('Badge not found');
-      } else {
-        res.status(200).json(results.rows[0]);
-      }
-    });
-  });
-  
-  // Endpoint for updating details of a badge by id
-  app.put('/badges/:id', authenticateJWT, authorizeRole('admin'), (req, res) => {
-    const badgeId = req.params.id;
-    const { name, description, image } = req.body;
-  
-    pool.query('UPDATE badge SET name = $1, description = $2, image = $3 WHERE id = $4', [name, description, image, badgeId], (error, results) => {
-      if (error) {
-        console.error(error);
-        res.status(500).send('Error updating badge');
-      } else if (results.rowCount === 0) {
-        res.status(404).send('Badge not found');
-      } else {
-        res.status(200).send('Badge updated successfully');
-      }
-    });
-  });
-  
-  // Endpoint for deleting a badge by id
-  app.delete('/badges/:id', authenticateJWT, authorizeRole('admin'), (req, res) => {
-    const badgeId = req.params.id;
-  
-    pool.query('DELETE FROM badge WHERE id = $1', [badgeId], (error, results) => {
-      if (error) {
-        console.error(error);
-        res.status(500).send('Error deleting badge');
-      } else if (results.rowCount === 0) {
-        res.status(404).send('Badge not found');
-      } else {
-        res.status(200).send('Badge deleted successfully');
-      }
-    });
-  });
-
-// Endpoint for generating a Stream Chat JWT token for the authenticated user
-app.get('/chat-token', authenticateJWT, (req, res) => {
-  const userId = req.user.id;
-  const chatClient = new StreamChat(apiKey, apiSecret);
-
-  const token = chatClient.createToken(userId);
-
-  res.json({ token });
-});
-
-// tell a route to look for a GET request on the root / url and return some JSON
-app.get('/', (request, response) => {
-    response.json({ 
-        info: 'Node.js, Express and Postgres API Running'
-    });
-}); 
-
 // Start the server
-app.listen(5000, () => {
-    console.log('Server started on port 5000');
+app.listen(3000, () => {
+    console.log('Server started on port 3000');
 });
